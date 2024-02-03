@@ -1,32 +1,34 @@
-# BlaBlaCar
+# Spore.Bio
 
-This README provides an overview and usage guide for a set of airflow that facilitate data retrieval, transformation, and storage. These functions are intended to assist in fetching data from an API, transforming it into a structured format, and storing it as CSV files. 
+This README provides an overview and usage guide for a set of airflow that facilitate data retrieval, transformation, and storage. These functions are intended to assist in fetching data from an given excel file, transforming it into a structured format, and storing it as Postgres database. 
 
 ## About 
-This Project intents to query data from Public API for "Transport for The Netherlands" which provide information about OVAPI, country-wide public transport and store it in a CSV file.<br />
-API Description: https://github.com/koch-t/KV78Turbo-OVAPI/wiki.<br />
-We will use Per Line Endpoint<br />
-Base_url : http://v0.ovapi.nl/<br />
-Endpoint: /line/<br />
-Authorization: Not needed <br />
+This Project intents to ease the work of micrbiologist by providing them structured data and making easily available to them.<br />
+We have Excel file in data folder<br />
+We will do required transformation and send data to postgreSQL<br />
+
 
 ## Files 
-    airflow/
+    Yash-spore.bio-test/
     |-dags/
-    |     |_ commons.py
-    |     |_ main.py 
-    |     
+    |     |_ commons/
+    |     |         |_commons.py
+    |     |         |_create_queries.sql
+    |     |         |_graph.py
+    |     | 
+    |     |_ main.py
+    |  
+    |-data/
+    |     |_ input.xlsx
     |-results/
-    |       |_datalake/
-    |       |         |_raw_data.csv
-    |       |_data warehouse/
-    |                 |_2023/
-    |                     |_10/
-    |                       |_17/
-    |                         |_line_data.csv
-    |
+    |       |_image_barcodes/     
+    |       |_membrane_barcode/
+    |                 
+    |-pgadmin/                
+    |     
     |-Tests/
     |      |_test.py
+    |      |_common_test.py
     |-logs/
     |-plugins/
     |-Readme.md
@@ -42,62 +44,118 @@ Authorization: Not needed <br />
 - **commons.py**:<br />
     This file contains only functions which are used by main.py. Some are generic function and some are very specfic to this project. The function definetion are below.<br />
 
-    **Functions**:<br />
-    - **fetch_data(url: str, datalake_path :str, rawdata_filename:str, context)->None:**<br />
-        This function fetches data from a given API using the provided URL and writes down in csv file in result/datalake folder.It is the raw data<br />
+- **graph.py**:<br />
+    This file produces the graph for "the number of bacteria per membrane VS the average surface occupied by bacteria"<br />
 
-        Parameters:<br />
-        url (str): The URL of the API from which data will be fetched.<br />
-        datalake_path: Path of datalake where raw file is stored.<br />
-        rawdata_filename: Name of the raw data file.<br />
-        **context: This parameter gets the task details, like execution date, start date etc.<br />
+- **create_queries.sql**:<br />
+    This file contains SQL DCL queries which are used to create tables and schema in this project.<br />
 
-        Returns:<br />
-        Writes raw data in csv format or None in case of errors.<br />
+- **common_test.py**:<br />
+    This file contains unit test for all common file functions.<br />
+
+- **test.py:**<br />
+    This file contains test case for airflow dag.<br />
+
+## Functions used in this project<br />
+- **read_file(data_path: str) -> pd.DataFrame:**<br />
+    This Function reads the excel file and returns the data in dataframe<br />
+
+    Parameters:<br />
+    data_path: Path of datalake where raw file is stored.
+
+
+    Returns:<br />
+    Writes raw data in dataframe format.<br />
+
+- **convert_to_date(*dataframes: pd.DataFrame, column: str)->None:**<br />
+    This Function takes dataframes and convert the column in date format.<br />
+
+    Parameters:<br />
+    dataframes: The dataframes passed<br />
+    column: name of the column whose datatype needs to be changed<br />
+
+    Output:<br />
+    Returns dataframe with conveted datetime column<br />
+
+- **replace_nan_with_column_value(dataframe, column_to_fill: str, column_to_use: str) -> pd.DataFrame:**<br />
+    Replace NaN values in a column with corresponding values from another column in the same DataFrame.<br />
+
+    Parameter:<br />
+    dataFrame: The DataFrame containing the columns.<br />
+    column_to_fill (str): The name of the column with NaN values to replace.<br />
+    column_to_use (str): The name of the column to use for replacement.<br />   
+    Output:<br />
+    DataFrame: The DataFrame with NaN values replaced.<br />
+
+- **update_and_rename_columns(df, common_column_name, specific_column_name) -> pd.DataFrame:**<br />
+    Update and rename columns in a DataFrame.<br />
+
+    Args:<br />
+        dataframe (DataFrame): The DataFrame to update and rename columns for.<br />
+        common_column_name (dict): A dictionary containing common column names to update.<br />
+        specific_column_name (dict): A dictionary containing specific column names to update.<br />
+
+    Returns:<br />
+        DataFrame: The DataFrame with updated and renamed columns.<br />
     
-    - **data_transformation(datalake_path : str, data_warehouse_path : str, final_file : str, rawdata_file : str, context) ->None**<br />
-        This function performs data transformation on the raw_data and writes it to a CSV file in structed format in data warehouse. It un-nests inner dictionaries, adds a main key as a separate column, and writes the data to a CSV file.<br />
+- **data_transofmation(data_path: str) -> None:**<br />
+    This function reads excel file and data transformation required, like change in type, column rename, value rename and
+    insert to database.<br />
 
-        Parameters:<br />
-        datalake_path: Path of datalake where raw file is stored.<br />
-        data_warehouse_path: path to the datawarehouse folder. <br />
-        final_file: Name of the final file stored in data warehouse.<br />
-        **context: This parameter gets the task details, like execution date, start date etc.<br />
-        rawdata_filename: Name of the raw data file.<br />
+    Args:<br />
+    data_path: Path to the excel file.<br />
 
-        Output:<br />
-        Writes the transformed data to a CSV file in the data warehouse folder in date partition.<br />
+    Returns:<br />
+        Save the data in database.
 
-    - **read_from_csv(datalake_path : str, date_partition : str, rawdata_file : str) -> dict**<br />
-      This function reads from csv file and return the output.<br />
+- **insert_to_database(membrane_data, images_data) -> None:**<br />
 
-      Parameter:<br />
-      rawdata_filename: Name of the raw data file.<br />
-      datalake_path: Path of datalake where raw file is stored.<br />
-      date_partition: File path with date patitioned folder<br />      
-       Output:<br />
-        Reades data to the specified CSV file and returns the data.<br />
+    Insert the data to the database.<br />
 
-    - **write_to_csv(file_path: str, fieldnames: list, csv_data: list) -> None**<br />
-        This function writes data to a CSV file.<br />
+    Args:<br />
+        membrane_df: membrane data to be inserted.<br />
+        images_df: image data to be inserted.<br />
 
-        Parameters:<br />
-        file_path (str): The path to the CSV file.<br />
-        fieldnames (list): Names of the header columns.<br />
-        csv_data (list): Data to be written to the CSV file.<br />
+    Returns:<br />
+        data is been inserted to the database
 
-        Output:<br />
-        Writes data to the specified CSV file.<br />
-    
-    - **date_partitioning(context) -> str**<br />
-        This function creates a directory structure based on the execution date of the dag. It's intended for date-based partitioning of data storage.<br />
+- **fetch_data_from_database(table_name: str, column_name: str, connection) -> pd.DataFrame:**<br />
+    Fetch data from a specified column of a table in the database.<br />
 
-        Parameters:<br />
-        **context: This parameter gets the task details, like execution date, start date etc.<br />
+    Args:<br />
+        table_name (str): The name of the table to fetch data from.<br />
+        column_name (str): The name of the column to fetch data from.<br />
+        connection: The connection to the PostgreSQL database.<br />
 
-        Returns:<br />
-        str: The path to the directory structure based on the execution date.
-        Usage
+    Returns:<br />
+        list: A list of data entries fetched from the specified column.<br />
+
+- **generate_and_save_barcode(data, output_folder: str) -> None:**<br />
+    Generate barcode images for the provided data and save them to the specified folder.<br/>
+
+    Args:<br />
+        data (list): A list of data entries to generate barcodes for.<br />
+    Returns:<br />
+        Save the barcode image in give path.
+
+- **populate_barcode():->None**
+    save barcode images for the provided data and save them to the specified folder.<br />
+
+    Returns:<br />
+        Generates and saves the barcode.
+
+- **run_sql_file(sql_file: str)->None:**<br />
+    This Function runs the sql files.<br />
+
+    Args:<br />
+        sql_file: Name of SQL file that need to be run.<br />
+
+- **generate_membrane_column_from_image_name(membrane_data: pd.Dataframe, images_data: pd.Dataframe) -> pd.DataFrame:**
+    This Function geneartes membrane column with help of image_name. To form a relation with membrane Table.
+    Because image_name is extension of
+    Args:
+        membrane_data: Data of membrane sheet.
+        images_data: Data of images sheet.
 
 ## Running the Script
 
@@ -107,40 +165,98 @@ To run the Python script that contains the data processing functions, follow the
    If you haven't already, clone this repository to your local machine using Git.
 
    ```bash
-   git clone https://github.com/yashjain02/BlaBlaCar.git
-   cd BlaBlaCar
-   cd airflow
+   git clone https://github.com/yashjain02/yash-spore.bio-test.git
+   cd yash-spore.bio-test
 
 2. **Running the Script**
     ```Python
-    docker-compose airflow init
-    docker-compose up
+    docker-compose up --build
     ```
 3. **web UI**<br />
     ```
     open the browser and enter : http://localhost:8080
     username: airflow
     password: airflow
+    ```
+4. **Pgadmin**<br />
+    ```
+    open the browser and enter : http://localhost:15432/
+    username: spore@datengineer.com
+    password: postgres
+    ```
     
+## Access to Pgadmin
+I have added pgadmin service to docker compose file, you can access under th address above with given credentials.<br />
+create one server by clicking on 'add server', you find it in center of you screen,<br />
+**Name of server: Spore**,<br />
+In next tab,<br /> 
+**Name of host: postgres**,<br />
+**user : airflow**<br />
+**password:airflow**<br />
+Then save it, you find the name under server on you left hand side.<br />
+
+**Note: If you wish to run the pipeline again then you need to delete the table in pgadmin, Because, we are dealing with single file and already the data would be in table, by inserting again the same data would voilate the primary key integrity and would cause error. Primary key column should have unique value. By adding again the same data by running the pipeline without deleting data, will add duplicates.**
+
+
 ## Running the test cases
 
-Unit test cases have been only written for airflow dags. Commons function testcases are in python_without_airflow.The function perform the same. The test scripts are in test folder in test.py file.
-To run the tests run the below command.
-```Python
-python -m unittest tests/test.py
+Unit test cases have been written for both airflow dag and functions
+To run the tests for airflow dag, run the below command.<br />
+**Make sure docker compose is running**. Open new terminal and execute below command.
+```bash
+docker exec <container_id> pytest /opt/airflow/tests/test.py
 ```
+container Id: Id of airflow webserver. You can obtain this id by running 
+```bash
+docker ps
+```
+**Note: Before running unittest of common_test.py. Change  the value of host in commons file(Line No: 41 and 39) from postgres to 127.0.0.1. Because test scripts will be accessing and running commons file and it does not have capability to translate name to address, only docker has it.**<br />
+To run unit test cases. Go to tests folder and run the test file directly or run below command.<br />
+```python
+cd tests
+python -m unittest common_test.py
+``` 
 
-## Data Flow in the script
 
-Below is the step by step process how the data is travelled.
-1. By running docker-compose up command in terminal, wait for a min or two to start the web UI. Then enter the address in your browser, given above. enter the username and password.
-2. you will find a dag, trigger the dag.
-3. In first task, it fetchs the data from API and stores it in result/datalake/{date_partition} folder as a raw data.It creates a date partition folder, because for faster readility and backfilling in airflow
-4. I have tried to replicate an actual data pipeline. Since a transformation is required so I have used concept of raw data and datalake.
-5. In second task, It reads from raw_file usind read_from_csv() function and send the data to data_transformation()
-6.  **Why data tranformation?**<br />
-    When you run the airflow script you will find in result/datalake/{}date_partition/raw_data.csv that the data is unstructed. The Line are as headers and the value are dictionary. For data analyst it is difficult to create a dashboard. 
-7. In data_transformation(), it creates a date partition folder, because for faster readility and backfilling in airflow. And also faster for data analyst to query the data.
-8. Then the data transformation takes place and write the final output in result/datawarehouse/(current_date).
+
+## Explaination, Dataflow of my approach
+
+1. I have used docker compose file of airflow where I have modified the file by adding pgadmin service and mounting the folders aswell. I am  using pgadmin as database client.
+2. I have written to a Docker file to install the required libraries for this project.
+3. When you run docker compose up, the docker first installs the libraries and runs all the services.
+4. Go to the address given above for airflow UI, Login with the given credentials. Also login to pgadmin and check if the table is not created under spore database. If table exist then delete the tables so you can the pipelines seemlessly. Because, both table have Primary key and adding same data again will cause error. Run the pipeline in airflow.
+5. First it reads the excel file, then it does the required transformation.
+6. Transformation like change in type, creating new columns, removing Nan values, replacing incorrect name with coreect ones.
+7. If you also look at the data, both tables have some similar columns, which may question to make it in one table. But if you look at the values of those column some differ or may differ in future which is necessary to distinguish the data. So if it for best parctice to not deleted the data.
+8. I have used barcode value to store in database rather than image because, it is the optimized way to store in database, which is aquire less memory and will be easily retreivable by non techical user.
+9. Once the transformation is done, table and schema is created if not exist from create_queries.sql file. I have taken membrane_name from membrane table as Primary key and membrane column from image_table as Foreign key. Data is inserted to database. It inserts the data. I have created env variable for the postgres cred, it is bad practice to expose passwords. You can find the env variable in docker compose.
+10. Then in next task, it retreive the barcode data and convert it to the images and save to the local system.
+11. You may find barcode images under results folder.
+
+## Why Transformation?:
+When We look at the data, there are some wierd column names, Usable_for_ML has Faux for false, some columns have Nan values,
+filtration_date is in string, Need to replace barcode value(which is Nan) to image_name or membrane_name. These values can't be inserted in database or fed to model for traning which may result in bad prediction.
+
+## Why not remove similar columns from membrane and image and create new table for it?
+Yes, You are right to think to create seperate table for similar column, or follow Normalization. But, when we look at the image data, column like usable_for_ML in images data slightly differ from membrane's usable_for_ML values. And some columns may differ in future because they are quantitative measures. And images are data which are produced by taking pictures of membranes and tested in lab. There might be a scenario where one of the test may be different or number of bacteria might be different.<br />
+So, rather deleting the data consider it 2 different tables altoghter.
+
+## Why to create relation between two tables?
+Because, Images are dependent on membrane and images tables needs to have information about which membrane the images are. Although the name might suggest the membrane name but we can't dependent on it because in future the naming might change.
+
+## Why PostgreSQL or SQL?
+Because  for the simple reason that the input is in Excel file in structured format. There is no reason to go for NoSQL when we have Structured formated file. And also it provide joins, windows functions for analytical query and helps with complex queries. It also provides scalability and ACID properties. And moreover it is easily used for data viz tools like tableau and PowerBI
+
+## Future Developement
+
+1. Instead of using pandas, spark is best for data processing. It is fast and has in memory and pandas are worst in airflow when it comes for large dataset.
+2. We have to use concept for date partitioning and data lake when the dataset exceeds for backfilling and faster readability.
+3. We need to have proper data warehouse like redshift, snowflake because of the variety of data.
+4. Its best to use data viz tools so that it is easy for non-tech user for access the data.
+5. We need to create a data catalog tool so that anybody in the company can access the data info.
+6. We need have to create specific indexes for faster data retrevials.
+7. Its a best practice to have data contracts, so we can have info about the change in schema.
+8. We can use DBT for complex data models.
+
 
 

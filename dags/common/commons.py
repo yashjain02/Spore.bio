@@ -32,17 +32,14 @@ images_column_name = {
     'lens diameter': 'lens_diameter'
 }
 
-database = os.environ.get('database')
-user= os.environ.get('user')
-password = os.environ.get('password')
-host = os.environ.get('host')
-
 connection = psycopg2.connect(
-    database=database,
-    user=user,
-    password=password,
-    host=host
+    database='spore',
+    user='airflow',
+    password='airflow',
+    host='postgres'
     )
+engine = create_engine(f'postgresql://airflow:airflow@postgres:5432/spore')
+
 
 def read_file(data_path:str) -> pd.DataFrame:
     """
@@ -82,7 +79,7 @@ def replace_nan_with_column_value(dataframe, column_to_fill:str, column_to_use:s
     return dataframe
 
 
-def update_and_rename_columns(df, common_column_name, specific_column_name) -> pd.DataFrame:
+def update_and_rename_columns(dataframe, common_column_name, specific_column_name) -> pd.DataFrame:
     """
     Update and rename columns in a DataFrame.
 
@@ -95,11 +92,32 @@ def update_and_rename_columns(df, common_column_name, specific_column_name) -> p
         DataFrame: The DataFrame with updated and renamed columns.
     """
     if common_column_name is not None:
-        df.rename(columns=common_column_name, inplace=True)
+        dataframe.rename(columns=common_column_name, inplace=True)
     if specific_column_name is not None:
         specific_column_name.update(common_column_name)
-        df.rename(columns=specific_column_name, inplace=True)
-    return df
+        dataframe.rename(columns=specific_column_name, inplace=True)
+    return dataframe
+
+
+def generate_membrane_column_from_image_name(membrane_data : pd.DataFrame, images_data : pd.DataFrame) -> pd.DataFrame:
+    """
+    This Function geneartes membrane column with help of image_name. To form a relation with membrane Table.
+    Because image_name is extension of
+    Args:
+        membrane_data: Data of membrane sheet.
+        images_data: Data of images sheet.
+    """
+    for idx, row in images_data.iterrows():
+        substring = ''
+        substing_length = 0
+        for membrane_name in membrane_data['membrane_name']:
+            if membrane_name in row['image_name']:
+                substring_length = len(membrane_name)
+                if substring_length > substing_length:
+                    substring = membrane_name
+                    substing_length = substring_length
+        images_data.at[idx, 'membrane'] = substring
+    return images_data
 
 
 def data_transofmation(data_path: str) -> None:
@@ -113,11 +131,27 @@ def data_transofmation(data_path: str) -> None:
     membrane_data, images_data = read_file(data_path)
     membrane_data = update_and_rename_columns(membrane_data,common_column_name, specific_column_name=membrane_column_name)
     images_data = update_and_rename_columns(images_data,common_column_name, specific_column_name=images_column_name)
+    images_data = generate_membrane_column_from_image_name(membrane_data, images_data)
     images_data['usable_for_ml'] = images_data['usable_for_ml'].replace('FAUX', False)
     membrane_data = replace_nan_with_column_value(membrane_data, 'barcode', 'membrane_name')
     images_data = replace_nan_with_column_value(images_data, 'barcode', 'image_name')
     membrane_data, images_data = convert_to_date(membrane_data, images_data, column='filtration_date')
     insert_to_database(membrane_data, images_data)
+
+
+def run_sql_file(sql_file: str)->None:
+    """
+    This Function runs the sql files.
+    Args:
+        sql_file: Name of SQL file that need to be run/
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    queries_file_path = os.path.join(current_dir, sql_file)
+    with open(queries_file_path, 'r') as file:
+        sql_queries = file.read()
+    with connection.cursor() as cursor:
+        cursor.execute(sql_queries)
+    connection.commit()
 
 
 def insert_to_database(membrane_data, images_data) -> None:
@@ -127,16 +161,10 @@ def insert_to_database(membrane_data, images_data) -> None:
         membrane_df: membrane data to be inserted.
         images_df: image data to be inserted
     """
-    engine = create_engine(f'postgresql://{user}:{password}@{host}:5432/{database}')
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    queries_file_path = os.path.join(current_dir, 'queries.sql')
-    with open(queries_file_path, 'r') as file:
-        sql_queries = file.read()
-    with connection.cursor() as cursor:
-        cursor.execute(sql_queries)
-    connection.commit()
-    membrane_data.to_sql('membrane_table', engine, if_exists='append', index=False)
-    images_data.to_sql('images_table', engine, if_exists='append', index=False)
+
+    run_sql_file('create_queries.sql')
+    membrane_data.to_sql('membrane_table', engine, schema='spore', if_exists='append', index=False)
+    images_data.to_sql('images_table', engine, schema='spore', if_exists='append', index=False)
     connection.close()
 
 
@@ -154,7 +182,7 @@ def fetch_data_from_database(table_name: str, column_name: str, connection) -> p
     """
     data = []
     with connection.cursor() as cursor:
-        cursor.execute(f"SELECT {column_name} FROM {table_name}")
+        cursor.execute(f"SELECT {column_name} FROM spore.{table_name}")
         rows = cursor.fetchall()
         for row in rows:
             data.append(row[0]) 

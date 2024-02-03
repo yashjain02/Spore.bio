@@ -59,10 +59,6 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
-    user: 'airflow'
-    database: 'spore'
-    password: 'airflow'
-    host: 'postgres'
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -88,6 +84,8 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"  # Bind PostgreSQL port to host port 5432
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
@@ -99,7 +97,7 @@ services:
       image: dpage/pgadmin4
       restart: always
       environment:
-          - PGADMIN_DEFAULT_EMAIL=contato@company.com
+          - PGADMIN_DEFAULT_EMAIL=spore@dataengineer.com
           - PGADMIN_DEFAULT_PASSWORD=postgres
       volumes:
           - ./pgadmin:/var/lib/pgadmin

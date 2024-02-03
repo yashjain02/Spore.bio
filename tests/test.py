@@ -6,8 +6,8 @@ def test_dag_structure():
     """
     Test whether the DAG has the expected structure.
     """
-    dag_id = 'excel_to_postgres_pipeline'
-    dags = DagBag('./dags/membrane.py').get_dag(dag_id)
+    dag_id = 'membrane_Image_database'
+    dags = DagBag('./dags/main.py').get_dag(dag_id)
 
     # Confirm the DAG and task ID exists
     assert dags is not None

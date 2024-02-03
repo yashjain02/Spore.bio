@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from datetime import datetime
-from commons import data_transofmation,populate_barcode
+from common.commons import data_transofmation,populate_barcode
 
 
 default_args = {
@@ -10,7 +10,7 @@ default_args = {
     'retries': 1,
 }
 dag = DAG(
-    'excel_to_postgres_pipeline',
+    'membrane_Image_database',
     default_args=default_args,
     description='A DAG to process Excel file and insert data into PostgreSQL',
     schedule_interval=None,

@@ -1,18 +1,17 @@
 import unittest
-from unittest import mock
 import pandas as pd
 import sys
 import os
-from unittest.mock import MagicMock, patch
+
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
-from dags.commons import (read_file, convert_to_date, 
+from dags.common.commons import (read_file, convert_to_date, 
                           replace_nan_with_column_value, 
                         update_and_rename_columns,
-                        fetch_data_from_database)
+                        generate_membrane_column_from_image_name)
 class TestReadFile(unittest.TestCase):
 
 
@@ -64,22 +63,26 @@ class TestReadFile(unittest.TestCase):
         self.assertIn('new_col2', updated_df.columns)
         self.assertNotIn('col1', updated_df.columns)
         self.assertNotIn('col2', updated_df.columns)
-
     
-    def test_fetch_data_from_database(self):
-        mock_connection = MagicMock()
-
-        mock_cursor = MagicMock()
-        mock_cursor.fetchall.return_value = [(1,), (2,), (3,)]
-        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
-
-        table_name = 'test_table'
-        column_name = 'test_column'
-        data = fetch_data_from_database(table_name, column_name, mock_connection)
-
-        mock_cursor.execute.assert_called_once_with(f"SELECT {column_name} FROM {table_name}")
-        self.assertEqual(data, [1, 2, 3])
-    
+    def test_generate_membrane_column_from_image_name(self):
+        # Mock membrane data
+        membrane_data = pd.DataFrame({
+            'membrane_name': ["MEM1", "MEM2", "MEM3"]
+        })
+        # Mock images data
+        images_data = pd.DataFrame({
+            'image_name': ["IMG_MEM1", "IMG_MEM2", "IMG_MEM3_IMG"]
+        })
+        # Call the function
+        result = generate_membrane_column_from_image_name(membrane_data, images_data)
+        # Expected result
+        expected_result = pd.DataFrame({
+            'image_name': ["IMG_MEM1", "IMG_MEM2", "IMG_MEM3_IMG"],
+            'membrane': ["MEM1", "MEM2", "MEM3"]  # Expect last row to be empty because no membrane name is found
+        })
+        # Assert that the result matches the expected result
+        pd.testing.assert_frame_equal(result, expected_result)
+ 
 
 if __name__ == '__main__':
     unittest.main()
