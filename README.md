@@ -172,30 +172,35 @@ To run the Python script that contains the data processing functions, follow the
     ```Python
     docker-compose up --build
     ```
-3. **web UI**<br />
-    ```
-    open the browser and enter : http://localhost:8080
-    username: airflow
-    password: airflow
-    ```
-4. **Pgadmin**<br />
+3. Before you run the pipeline, login in Pgadmin and delete the existing schema(not the database). It will also delete if table already existed. Because I am storing the session info for quick use next time. I have deleted all the info but there might be a scenario where some session might be left in docker.<br />
+To Access the server follow below instruction.<br />
+**Access to Pgadmin**<br />
+ **Pgadmin**<br />
     ```
     open the browser and enter : http://localhost:15432/
     username: spore@datengineer.com
     password: postgres
     ```
-    
-## Access to Pgadmin
-I have added pgadmin service to docker compose file, you can access under th address above with given credentials.<br />
-create one server by clicking on 'add server', you find it in center of you screen,<br />
-**Name of server: Spore**,<br />
-In next tab,<br /> 
-**Name of host: postgres**,<br />
-**user : airflow**<br />
-**password:airflow**<br />
-Then save it, you find the name under server on you left hand side.<br />
+    create one server by clicking on 'add server', you find it in center of you screen,<br />
+    **Name of server: Spore**,<br />
+    In next tab,<br /> 
+    **Name of host: postgres**,<br />
+    **user : airflow**<br />
+    **password:airflow**<br />
+    Then save it, you find the name under server on you left side of you screen.<br />
+    Under Spore, expand database>spore(if you cannot find right click on database and create a new one under name "Spore")>check if spore schema is present, then delete it. If not you can proceed with execution.
 
-**Note: If you wish to run the pipeline again then you need to delete the table in pgadmin, Because, we are dealing with single file and already the data would be in table, by inserting again the same data would voilate the primary key integrity and would cause error. Primary key column should have unique value. By adding again the same data by running the pipeline without deleting data, will add duplicates.**
+    **Note: If you wish to run the pipeline again then you need to delete the table in pgadmin, Because, we are dealing with single file and already the data would be in table, by inserting again the same data would voilate the primary key integrity and would cause error. Primary key column should have unique value. By adding again the same data by running the pipeline without deleting data, will add duplicates.**
+
+4. **web UI**<br />
+    ```
+    open the browser and enter : http://localhost:8080
+    username: airflow
+    password: airflow
+    ```
+
+    
+
 
 
 ## Running the test cases
