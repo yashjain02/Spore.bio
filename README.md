@@ -108,7 +108,7 @@ We will do required transformation and send data to postgreSQL<br />
     Returns:<br />
         Save the data in database.
 
-- **insert_to_database(membrane_data, images_data) -> None:**<br />
+- **insert_to_database(membrane_data:pd.DataFrame, images_data:pd.DataFrame,camera:pd.DataFrame, membrane_images:pd.DataFrame, date:pd.DataFrame) -> None::**<br />
 
     Insert the data to the database.<br />
 
@@ -156,6 +156,56 @@ We will do required transformation and send data to postgreSQL<br />
     Args:
         membrane_data: Data of membrane sheet.
         images_data: Data of images sheet.
+
+- **drop_columns(data : pd.dataframe, columns_to_drop: list)-> pd.Dataframe:**
+    Drop columns from a DataFrame.
+    
+    Args:
+      df (DataFrame): The DataFrame from which to drop columns.
+      columns_to_drop (list of str): List of column names to drop.
+    
+    Returns:
+      DataFrame: DataFrame with specified columns dropped.
+
+
+- **copy_columns(source_dataframe : pd.DataFrame, columns_to_copy : list, target_dataframe : pd.DataFrame) ->pd.DataFrame -> None**
+    Copy specific columns from source DataFrame to target DataFrame.
+    
+    Args:
+        source_df (DataFrame): The DataFrame from which to copy columns.
+        columns_to_copy (list of str): List of column names to copy.
+        target_df (DataFrame): The DataFrame to which the columns will be copied.
+    
+    Returns:
+        None
+
+- **date_data(membrane_images : pd.DataFrame) -> pd.DataFrame: ->pd.Dataframe**
+    This Function creates date dateframe and sperates day,  month and year from date.
+    Args:
+        membrane_images: membrane_images fact table
+    
+    Return:
+        returns date table
+
+- **schema_setup(membrane_data : pd.DataFrame, images_data : pd.DataFrame) -> pd.DataFrame:**
+    This Function creates a structure for snowflake schema. It does all the processing and sets the dataframe.
+
+    Args:
+        membrane_data: dataframe for membrane.
+        images_data: dataframe for images.
+
+    Returns:
+        Returns all the dataframe required for tables creation.
+
+- **convert_int_to_percent(dataframe : pd.DataFrame, columns_to_clean: list) -> pd.DataFrame:**
+    converts decimal or int to percent value from specified columns in the DataFrame.
+    
+    Args:
+    - df (DataFrame): The DataFrame from which to remove the percentage symbol.
+    - columns_to_clean (list of str): List of column names to clean.
+    
+    Returns:
+    - None
 
 ## Running the Script
 
@@ -215,7 +265,7 @@ container Id: Id of airflow webserver. You can obtain this id by running
 ```bash
 docker ps
 ```
-**Note: Before running unittest of common_test.py. Change  the value of host in commons file(Line No: 41 and 39) from postgres to 127.0.0.1. Because test scripts will be accessing and running commons file and it does not have capability to translate name to address, only docker has it.**<br />
+**Note: Before running unittest of common_test.py. please cooment the code in commons file(Line No: 61 and 67). Because test scripts will be accessing and running commons file and it does not have capability to translate name to address, only docker has it.**<br />
 To run unit test cases. Go to tests folder and run the test file directly or run below command.<br />
 ```python
 cd tests
@@ -231,23 +281,21 @@ python -m unittest common_test.py
 3. When you run docker compose up, the docker first installs the libraries and runs all the services.
 4. Go to the address given above for airflow UI, Login with the given credentials. Also login to pgadmin and check if the table is not created under spore database. If table exist then delete the tables so you can the pipelines seemlessly. Because, both table have Primary key and adding same data again will cause error. Run the pipeline in airflow.
 5. First it reads the excel file, then it does the required transformation.
-6. Transformation like change in type, creating new columns, removing Nan values, replacing incorrect name with coreect ones.
-7. If you also look at the data, both tables have some similar columns, which may question to make it in one table. But if you look at the values of those column some differ or may differ in future which is necessary to distinguish the data. So if it for best parctice to not deleted the data.
-8. I have used barcode value to store in database rather than image because, it is the optimized way to store in database, which is aquire less memory and will be easily retreivable by non techical user.
-9. Once the transformation is done, table and schema is created if not exist from create_queries.sql file. I have taken membrane_name from membrane table as Primary key and membrane column from image_table as Foreign key. Data is inserted to database. It inserts the data. I have created env variable for the postgres cred, it is bad practice to expose passwords. You can find the env variable in docker compose.
-10. Then in next task, it retreive the barcode data and convert it to the images and save to the local system.
-11. You may find barcode images under results folder.
+6. Transformation like change in type, creating new columns, removing Nan values, replacing incorrect name with corect ones.
+7. I have used barcode value to store in database rather than image because, it is the optimized way to store in database, which is aquire less memory and will be easily retreivable by non techical user.
+8. Once the transformation is done, table and schema is created if not exist from create_queries.sql file. Data is inserted to database. It inserts the data. I have created env variable for the postgres cred, it is bad practice to expose passwords. You can find the env variable in docker compose.
+9. Then in next task, it retreive the barcode data and convert it to the images and save to the local system.
+10. You may find barcode images under results folder.
 
 ## Why Transformation?:
 When We look at the data, there are some wierd column names, Usable_for_ML has Faux for false, some columns have Nan values,
 filtration_date is in string, Need to replace barcode value(which is Nan) to image_name or membrane_name. These values can't be inserted in database or fed to model for traning which may result in bad prediction.
 
-## Why not remove similar columns from membrane and image and create new table for it?
-Yes, You are right to think to create seperate table for similar column, or follow Normalization. But, when we look at the image data, column like usable_for_ML in images data slightly differ from membrane's usable_for_ML values. And some columns may differ in future because they are quantitative measures. And images are data which are produced by taking pictures of membranes and tested in lab. There might be a scenario where one of the test may be different or number of bacteria might be different.<br />
-So, rather deleting the data consider it 2 different tables altoghter.
+## Star Schema:
+I have used snowflake schema in this project because it improves query performance, better data integrity, reduced data redundancy, simple maintaince.
+If we see both the sheets in excel, most of the column are common, which is redundant. So I have created a snowflake schema, where membrane, images, date and camera is dimension and membrane_image_camera is fact table. I did not choose experiment as another dimension because in both membrane and images the values of usable for Ml differs and it is dependent on experiment name.
+Membrane, images, camera, date are qualitative measure and membrane_image_camera is quantitative measure. dimension table defines image table.
 
-## Why to create relation between two tables?
-Because, Images are dependent on membrane and images tables needs to have information about which membrane the images are. Although the name might suggest the membrane name but we can't dependent on it because in future the naming might change.
 
 ## Why PostgreSQL or SQL?
 Because  for the simple reason that the input is in Excel file in structured format. There is no reason to go for NoSQL when we have Structured formated file. And also it provide joins, windows functions for analytical query and helps with complex queries. It also provides scalability and ACID properties. And moreover it is easily used for data viz tools like tableau and PowerBI
