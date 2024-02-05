@@ -222,6 +222,8 @@ To run the Python script that contains the data processing functions, follow the
     ```Python
     docker-compose up --build
     ```
+    It would take 5 mins to load the webservers, because you are pulling the image from the start.
+
 3. Before you run the pipeline, login in Pgadmin and delete the existing schema(not the database). It will also delete if table already existed. Because I am storing the session info for quick use next time. I have deleted all the info but there might be a scenario where some session might be left in docker.<br />
 To Access the server follow below instruction.<br />
 **Access to Pgadmin**<br />
@@ -233,7 +235,7 @@ To Access the server follow below instruction.<br />
     ```
     create one server by clicking on 'add server', you find it in center of you screen,<br />
     **Name of server: Spore**,<br />
-    In next tab,<br /> 
+    In next tab connections,<br /> 
     **Name of host: postgres**,<br />
     **user : airflow**<br />
     **password:airflow**<br />
@@ -292,7 +294,7 @@ When We look at the data, there are some wierd column names, Usable_for_ML has F
 filtration_date is in string, Need to replace barcode value(which is Nan) to image_name or membrane_name. These values can't be inserted in database or fed to model for traning which may result in bad prediction.
 
 ## Star Schema:
-I have used snowflake schema in this project because it improves query performance, better data integrity, reduced data redundancy, simple maintaince.
+I have used Star schema in this project because it improves query performance, better data integrity, reduced data redundancy, simple maintaince. And this schema is used for analyzing huge amount of data, and also requires less join statements.
 If we see both the sheets in excel, most of the column are common, which is redundant. So I have created a snowflake schema, where membrane, images, date and camera is dimension and membrane_image_camera is fact table. I did not choose experiment as another dimension because in both membrane and images the values of usable for Ml differs and it is dependent on experiment name.
 Membrane, images, camera, date are qualitative measure and membrane_image_camera is quantitative measure. dimension table defines image table.
 
