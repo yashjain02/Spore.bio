@@ -225,7 +225,7 @@ To run the Python script that contains the data processing functions, follow the
     It would take 5 mins to load the webservers, because you are pulling the image from the start.
 
 3. Before you run the pipeline, login in Pgadmin and delete the existing schema(not the database). It will also delete if table already existed. Because I am storing the session info for quick use next time. I have deleted all the info but there might be a scenario where some session might be left in docker.<br />
-To Access the server follow below instruction.<br />
+To Access the server, please follow below instruction.<br />
 **Access to Pgadmin**<br />
  **Pgadmin**<br />
     ```
@@ -233,7 +233,7 @@ To Access the server follow below instruction.<br />
     username: spore@datengineer.com
     password: postgres
     ```
-    create one server by clicking on 'add server', you find it in center of you screen,<br />
+    Check if server existed by expanding server column on left side of you screen, if not create one server by clicking on 'add server', you find it in center of you screen,<br />
     **Name of server: Spore**,<br />
     In next tab connections,<br /> 
     **Name of host: postgres**,<br />
@@ -252,9 +252,6 @@ To Access the server follow below instruction.<br />
     ```
 
     
-
-
-
 ## Running the test cases
 
 Unit test cases have been written for both airflow dag and functions
@@ -273,7 +270,6 @@ To run unit test cases. Go to tests folder and run the test file directly or run
 cd tests
 python -m unittest common_test.py
 ``` 
-
 
 
 ## Explaination, Dataflow of my approach
