@@ -5,24 +5,28 @@ from sqlalchemy import create_engine
 def fetch_data_from_database(engine):
 
     sql_query = """
-        SELECT "barcode", "total_number_of_bacteria_measured_in_lab", "number_of_bacteria_pixels"
-        FROM images_table
+        SELECT "membrane", "total_number_of_bacteria_measured_in_lab", "number_of_bacteria_pixels"
+        FROM spore.membrane_image_camera
     """
 
     df = pd.read_sql_query(sql_query, engine)
     return df
 
 def plot_bacteria_vs_surface(data):
-    bacteria_per_membrane = data.groupby('membrane')['total_number_of_bacteria_measured_in_lab'].sum()
-    surface_occupied_by_bacteria = data['number_of_bacteria_pixels'].mean()
-
+    # we can also apply sum() windows function here aswell
+    # Group by membrane and calculate the sum of number_of_bacteria_pixels and total_of_number_of_bacteria_measured_in_lab
+    grouped_data = data.groupby('membrane').sum()
+    # Calculate the average surface occupied by bacteria for each membrane
+    grouped_data['average_surface'] = grouped_data['number_of_bacteria_pixels'] / grouped_data['total_number_of_bacteria_measured_in_lab']
+    # Plot the data
     plt.figure(figsize=(10, 6))
-    plt.scatter(bacteria_per_membrane, surface_occupied_by_bacteria, color='blue')
-    plt.title('Number of Bacteria per Membrane vs Average Surface Occupied by Bacteria')
-    plt.xlabel('Number of Bacteria per Membrane')
-    plt.ylabel('Average Surface Occupied by Bacteria in pixels')
+    plt.scatter(grouped_data['average_surface'], grouped_data['number_of_bacteria_pixels'])
+    plt.title('Number of Bacteria per Membrane vs. Average Surface Occupied by Bacteria')
+    plt.xlabel('Average Surface Occupied by Bacteria')
+    plt.ylabel('Number of Bacteria per Membrane')
     plt.grid(True)
     plt.show()
+
 
 engine = create_engine('postgresql://airflow:airflow@127.0.0.1:5432/spore')
 
